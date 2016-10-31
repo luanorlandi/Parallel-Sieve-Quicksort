@@ -12,8 +12,16 @@
 #define PRIME 0
 #define NONPRIME 1
 
-void crossout() {
-	printf("helloworld!\n");
+void crossout(int *prime, int size) {
+	int i, j;
+
+	for(i = 2; i < size; i++) {
+		if(prime[i] == PRIME) {
+			for(j = i+i; j < size; j += i) {
+				prime[j] = NONPRIME;
+			}
+		}
+	}
 }
 
 void showAnswer(int *prime, int size) {
@@ -49,7 +57,7 @@ int main(int argc, char *argv[]) {
 
 	/* put 1 in not primes */
 	//#pragma omp parallel num_threads(4)
-	crossout(prime);
+	crossout(prime, size);
 
 	showAnswer(prime, size);
 
