@@ -9,13 +9,35 @@
 #include <math.h>
 #include <omp.h>
 
+#define PRIME 0
+#define NONPRIME 1
+
+void crossout() {
+	printf("helloworld!\n");
+}
+
+void showAnswer(int *prime, int size) {
+	int total = 0, i;
+
+	printf("Prime numbers found (2 to %d):\n", size-1);
+
+	for(i = 2; i < size; i++) {
+		if(prime[i] == PRIME) {
+			printf("%d ", i);
+			total++;
+		}
+	}
+
+	printf("\nTotal: %d\n", total);
+}
+
 int main(int argc, char *argv[]) {
 	int *prime;		/* boolean */
 	int size;
-	int i = 0;
 
 	if(argc < 2) {
 		printf("Need argument for range\n");
+		exit(-1);
 	}
 
 	/* inclusive range */
@@ -23,10 +45,13 @@ int main(int argc, char *argv[]) {
 
 	/* prime numbers will be 0 */
 	/* not prime numbers will be 1 */
-	prime = (int*) calloc(size) * sizeof(int));
+	prime = (int*) calloc(size, sizeof(int));
 
 	/* put 1 in not primes */
+	//#pragma omp parallel num_threads(4)
 	crossout(prime);
+
+	showAnswer(prime, size);
 
 	free(prime);
 
