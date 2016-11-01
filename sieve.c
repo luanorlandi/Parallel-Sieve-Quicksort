@@ -28,7 +28,7 @@
 #define THREAD_COUNT 7
 
 /* typedef for  max range of a integer */
-typedef signed long long int slli;
+typedef unsigned long long int slli;
 
 void crossout(slli *prime, slli size, int nthreads) {
 
