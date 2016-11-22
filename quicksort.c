@@ -6,8 +6,6 @@
 
 #include "mpi.h"
 
-#define TAG 0
-
 int compare(const void * a, const void * b) {
    return(*(int*)a-*(int*)b);
 }
@@ -38,7 +36,7 @@ int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size,
 	}	
 	for(i=0;i<nthreads;i++) {
 		if(i!=rank) {
-			if(MPI_Send(envio[i], tamanho+1, MPI_INT, i, TAG, MPI_COMM_WORLD)!=MPI_SUCCESS) {
+			if(MPI_Send(envio[i], tamanho+1, MPI_INT, i, rank, MPI_COMM_WORLD)!=MPI_SUCCESS) {
 				printf("Houve um erro no envio de uma mensagem.");
 				MPI_Finalize();
 				exit(1);
@@ -47,7 +45,7 @@ int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size,
 	}
 	for(i=0;i<nthreads;i++) {
 		if(i!=rank) {
-			MPI_Recv(recebimento, tamanho+1, MPI_INT, i, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(recebimento, tamanho+1, MPI_INT, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			for(j=1;j<recebimento[0]+1;j++) {
 				valores[valores[0]+1]=recebimento[j];
 				valores[0]++;
@@ -63,7 +61,6 @@ int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size,
 	}
 	free(envio);
 	free(recebimento);
-	printf("\n\n\n\n");
 	return valores;
 }
 
@@ -100,17 +97,17 @@ void master(int *vetor, int tamanho, int nthreads) {
 	}
 	pivots[nthreads-2]=samples[(nthreads-2)*nthreads+nthreads/2];
 	for(i=1;i<nthreads;i++) {
-		if(MPI_Send(pivots, nthreads-1, MPI_INT, i, TAG, MPI_COMM_WORLD)!=MPI_SUCCESS) {
+		if(MPI_Send(pivots, nthreads-1, MPI_INT, i, 0, MPI_COMM_WORLD)!=MPI_SUCCESS) {
 			printf("Houve um erro no envio de uma mensagem.");
 			MPI_Finalize();
 			exit(1);
 		}
-		if(MPI_Send(&start[i], 1, MPI_INT, i, TAG, MPI_COMM_WORLD)!=MPI_SUCCESS) {
+		if(MPI_Send(&start[i], 1, MPI_INT, i, 1, MPI_COMM_WORLD)!=MPI_SUCCESS) {
 			printf("Houve um erro no envio de uma mensagem.");
 			MPI_Finalize();
 			exit(1);
 		}
-		if(MPI_Send(&size[i], 1, MPI_INT, i, TAG, MPI_COMM_WORLD)!=MPI_SUCCESS) {
+		if(MPI_Send(&size[i], 1, MPI_INT, i, 2, MPI_COMM_WORLD)!=MPI_SUCCESS) {
 			printf("Houve um erro no envio de uma mensagem.");
 			MPI_Finalize();
 			exit(1);
@@ -124,7 +121,7 @@ void master(int *vetor, int tamanho, int nthreads) {
 			qsort(buffer[0]+1, buffer[0][0], sizeof(int), compare);
 		}
 		else {
-			MPI_Recv(buffer[tid], tamanho+1, MPI_INT, tid, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(buffer[tid], tamanho+1, MPI_INT, tid, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			qsort(buffer[tid]+1, buffer[tid][0], sizeof(int), compare);
 		}
 	}
@@ -147,11 +144,11 @@ void master(int *vetor, int tamanho, int nthreads) {
 void slave(int *vetor, int tamanho, int nthreads) {
 	int start, size, *valores, *pivots, **envio;
 	pivots=(int *)malloc((nthreads-1)*sizeof(int));
-	MPI_Recv(pivots, nthreads-1, MPI_INT, 0, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	MPI_Recv(&start, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	MPI_Recv(&size, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	MPI_Recv(pivots, nthreads-1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	MPI_Recv(&start, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	MPI_Recv(&size, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	valores=troca_elementos(vetor, tamanho, nthreads, start, size, pivots);
-	if(MPI_Send(valores, tamanho+1, MPI_INT, 0, TAG, MPI_COMM_WORLD)!=MPI_SUCCESS) {
+	if(MPI_Send(valores, tamanho+1, MPI_INT, 0, 3, MPI_COMM_WORLD)!=MPI_SUCCESS) {
 		printf("Houve um erro no envio de uma mensagem.");
 		MPI_Finalize();
 		exit(1);
@@ -161,12 +158,16 @@ void slave(int *vetor, int tamanho, int nthreads) {
 }
 
 int main(int argc, char **argv) {
-	int *vetor, i, nthreads, rank, tamanho=100;
+	int *vetor, i, nthreads, rank, tamanho;
+	if(argc<2) {
+		exit(0);
+	}
+	tamanho=atoi(argv[1]);
 	vetor=(int *)malloc(tamanho*sizeof(int));
 	for(i=0;i<tamanho;i++) {
 		vetor[i]=tamanho-i;
 	}
-	MPI_Init(NULL, NULL);
+	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &nthreads);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if(!rank) {
