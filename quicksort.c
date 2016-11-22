@@ -20,22 +20,22 @@ int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size,
 	valores[0]=0;
 	envio=(int **)malloc(nthreads*sizeof(int *));
 	for(i=0;i<nthreads;i++) {
-		envio[i]=(int *)malloc(tamanho+1*sizeof(int));
+		envio[i]=(int *)malloc((tamanho+1)*sizeof(int));
 		envio[i][0]=0;
 	}
 	for(i=start;i<start+size;i++) {
 		for(j=0;j<nthreads-1;j++) {
-			if(vetor[i]<pivots[j]) {
+			if(vetor[i]<=pivots[j]) {
 				envio[j][0]++;
 				envio[j][envio[j][0]]=vetor[i];
 				break;
 			}
 		}
-		if(vetor[i]>pivots[nthreads-2]) {
+		if(vetor[i]>=pivots[nthreads-2]) {
 			envio[nthreads-1][0]++;
 			envio[nthreads-1][envio[nthreads-1][0]]=vetor[i];
 		}
-	}
+	}	
 	for(i=0;i<nthreads;i++) {
 		if(i!=rank) {
 			if(MPI_Send(envio[i], tamanho+1, MPI_INT, i, TAG, MPI_COMM_WORLD)!=MPI_SUCCESS) {
@@ -67,11 +67,12 @@ int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size,
 }
 
 void master(int *vetor, int tamanho, int nthreads) {
-	int i, tid, *size, *start, n, t, soma=0, *samples, *pivots, x, *valores, aux, *buffer;
+	int i, j, tid, *size, *start, n, t, soma=0, *samples, *pivots, aux=0, **buffer;
 	size=(int *)malloc(nthreads*sizeof(int));
 	start=(int *)malloc(nthreads*sizeof(int));
 	samples=(int *)malloc(nthreads*nthreads*sizeof(int));
 	pivots=(int *)malloc((nthreads-1)*sizeof(int));
+	buffer=(int **)malloc(nthreads*sizeof(int *));
 	n=nthreads;
 	t=tamanho;
 	for(i=0;i<nthreads;i++) {
@@ -111,34 +112,31 @@ void master(int *vetor, int tamanho, int nthreads) {
 			exit(1);
 		}
 	}
-	valores=troca_elementos(vetor, tamanho, nthreads, start[0], size[0], pivots);
-	#pragma omp parallel private(tid, i, buffer) num_threads(nthreads)
+	buffer[0]=troca_elementos(vetor, tamanho, nthreads, start[0], size[0], pivots);
+	#pragma omp parallel private(tid) num_threads(nthreads)
 	{
 		tid=omp_get_thread_num();
 		if(!tid) {
-			aux=valores[0];
-			valores[0]=INT_MAX;
-			qsort(valores, aux+1, sizeof(int), compare);
-			for(i=0;i<size[0];i++) {
-				vetor[i]=valores[i];
-			}
+			qsort(buffer[0]+1, buffer[0][0], sizeof(int), compare);
 		}
 		else {
-			buffer=(int *)malloc((tamanho+1)*sizeof(int));
-			MPI_Recv(buffer, tamanho+1, MPI_INT, tid, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			aux=buffer[0];
-			buffer[0]=INT_MAX;
-			qsort(buffer, aux+1, sizeof(int), compare);
-			for(i=start[tid];i<start[tid]+size[tid];i++) {
-				vetor[start[tid]+i]=buffer[i];
-			}
-			free(buffer);
+			MPI_Recv(buffer[tid], tamanho+1, MPI_INT, tid, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			qsort(buffer[tid]+1, buffer[tid][0], sizeof(int), compare);
 		}
-	}	
+	}
+	for(i=0;i<nthreads;i++) {
+		for(j=1;j<=buffer[i][0];j++) {
+			vetor[aux]=buffer[i][j];
+			aux++;
+		}
+	}
 	for(i=0;i<tamanho;i++) {
 		printf("%d ", vetor[i]);
 	}
-	free(valores);
+	for(i=0;i<nthreads;i++) {
+		free(buffer[i]);
+	}
+	free(buffer);
 	free(size);
 	free(start);
 	free(samples);
