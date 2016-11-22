@@ -183,6 +183,11 @@ void master(int *vetor/*vetor com todos os elementos*/,
 		}
 	}
 
+	
+	printf("\n\n\nTESTE\n\n\n");
+	MPI_Finalize();
+	exit(0);
+
 	//salva os valores ordenados no vetor principal
 	for(i=0;i<nthreads;i++) {
 		for(j=1;j<=buffer[i][0];j++) {
@@ -259,11 +264,11 @@ int main(int argc, char **argv) {
 
 	//parte a ser executada pelo processo 0 (master)
 	if(!rank) {
-		master(vetor, tamanho, nthreads);
+		master(vetor, tamanho-1, nthreads);
 		for(i=0;i<tamanho;i++) {
-			printf("%d ", vetor[i]);
+			printf("%d, ", vetor[i]);
 		}
-		printf("\n");
+		printf("%d.", vetor[i]);
 	}
 
 	//parte executada pelos outros processos
