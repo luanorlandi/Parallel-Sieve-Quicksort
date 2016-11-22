@@ -1,3 +1,9 @@
+// compile with
+// mpicc -g -Wall -fopenmp -o quicksort quicksort.c -lm
+
+// run with
+// ./quicksort -mpirun -np n t
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
