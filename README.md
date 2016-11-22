@@ -36,7 +36,7 @@ The project uses OpenMP, a open library for parallel programming. You will need 
 ### Run
 
 ```bash
-  $ ./quicksort -mpirun -np n t
+  $ mpirun quicksort -np n t
 ```
 
 'n' in the number of processes
