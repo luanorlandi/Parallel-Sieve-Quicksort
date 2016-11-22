@@ -15,8 +15,8 @@ int compare(const void * a, const void * b) {
 int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size, int *pivots) {
 	int i, j, k, **envio, rank, *recebimento, *valores;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	recebimento=(int *)malloc(tamanho+1*sizeof(int));
-	valores=(int *)malloc(tamanho+1*sizeof(int));
+	recebimento=(int *)malloc((tamanho+1)*sizeof(int));
+	valores=(int *)malloc((tamanho+1)*sizeof(int));
 	valores[0]=0;
 	envio=(int **)malloc(nthreads*sizeof(int *));
 	for(i=0;i<nthreads;i++) {
@@ -31,7 +31,7 @@ int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size,
 				break;
 			}
 		}
-		if(vetor[i]>pivots[nthreads-1]) {
+		if(vetor[i]>pivots[nthreads-2]) {
 			envio[nthreads-1][0]++;
 			envio[nthreads-1][envio[nthreads-1][0]]=vetor[i];
 		}
@@ -47,8 +47,8 @@ int *troca_elementos(int *vetor, int tamanho, int nthreads, int start, int size,
 	}
 	for(i=0;i<nthreads;i++) {
 		if(i!=rank) {
-			MPI_Recv(recebimento, tamanho+1, MPI_INT, MPI_ANY_SOURCE, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			for(j=0;j<recebimento[0];j++) {
+			MPI_Recv(recebimento, tamanho+1, MPI_INT, i, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			for(j=1;j<recebimento[0]+1;j++) {
 				valores[valores[0]+1]=recebimento[j];
 				valores[0]++;
 			}
@@ -134,13 +134,15 @@ void master(int *vetor, int tamanho, int nthreads) {
 			}
 			free(buffer);
 		}
+	}	
+	for(i=0;i<tamanho;i++) {
+		printf("%d ", vetor[i]);
 	}
 	free(valores);
 	free(size);
 	free(start);
 	free(samples);
 	free(pivots);
-	free(valores);
 }
 
 void slave(int *vetor, int tamanho, int nthreads) {
@@ -176,9 +178,6 @@ int main(int argc, char **argv) {
 		slave(vetor, tamanho, nthreads);
 	}
 	MPI_Finalize();
-	for(i=0;i<tamanho;i++) {
-		printf("%d ", vetor[i]);
-	}
 	free(vetor);
 	return 0;
 }
